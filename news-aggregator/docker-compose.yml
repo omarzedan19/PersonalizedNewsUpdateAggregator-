@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  user-service:
+    build:
+      context: ./user-service
+    ports:
+      - "8081:8080"
+    networks:
+      - news-aggregator-net
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/user_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+    command: ["daprd",
+              "-app-id", "user-service",
+              "-app-port", "8080",
+              "-components-path", "/dapr/components",
+              "--", "java", "-jar", "/user-service.jar"]
+    volumes:
+      - ./dapr:/dapr
+
+  news-service:
+    build:
+      context: ./news-service
+    ports:
+      - "8082:8080"
+    networks:
+      - news-aggregator-net
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/news_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+    command: ["daprd",
+              "-app-id", "news-service",
+              "-app-port", "8080",
+              "-components-path", "/dapr/components",
+              "--", "java", "-jar", "/news-service.jar"]
+    volumes:
+      - ./dapr:/dapr
+
+  notification-service:
+    build:
+      context: ./notification-service
+    ports:
+      - "8083:8080"
+    networks:
+      - news-aggregator-net
+    command: ["daprd",
+              "-app-id", "notification-service",
+              "-app-port", "8080",
+              "-components-path", "/dapr/components",
+              "--", "java", "-jar", "/notification-service.jar"]
+    volumes:
+      - ./dapr:/dapr
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    ports:
+      - "8080:80"
+    networks:
+      - news-aggregator-net
+    depends_on:
+      - user-service
+      - news-service
+      - notification-service
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - news-aggregator-net
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+    volumes:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+
+  redis:
+    image: redis:6.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - news-aggregator-net
+
+networks:
+  news-aggregator-net:
+    driver: bridge

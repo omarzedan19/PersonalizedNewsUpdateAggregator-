@@ -1,0 +1,10 @@
+apiVersion: dapr.io/v1alpha1
+kind: Subscription
+metadata:
+  name: news-subscription
+spec:
+  pubsubname: pubsub
+  topic: news-topic
+  route: /notifications/news-topic
+  metadata:
+    rawPayload: "true"
